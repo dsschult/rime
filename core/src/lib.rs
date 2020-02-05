@@ -1,11 +1,16 @@
 use std::collections::HashMap;
-use std::sync::Weak;
 
 use erased_serde::Serialize;
 use erased_serde::Deserializer;
 use bincode::{serialize_into, deserialize_from};
 
-use std::any::{Any, TypeId};
+use std::sync::Arc;
+
+use std::any::Any;
+
+use std::sync::RwLock;
+//use tokio::sync::RwLock;
+
 
 #[typetag::serde]
 pub trait I3Serializeable {
@@ -27,12 +32,15 @@ type I3FrameValue = Box<dyn I3Serializeable>;
 
 pub struct I3Frame {
     data: HashMap<String, I3FrameValue>,
-    shadows: Vec<Weak<I3Frame>>,
+    parent: Option<Arc<I3Frame>>,
 }
 
 impl I3Frame {
     pub fn new() -> I3Frame {
-        I3Frame{data: HashMap::new(), shadows: Vec::new()}
+        I3Frame{data: HashMap::new(), parent: None}
+    }
+    pub fn new_with_parent(parent: Arc<I3Frame>) -> I3Frame {
+        I3Frame{data: HashMap::new(), parent: Some(parent)}
     }
 
     pub fn get<S: AsRef<str>, T: 'static>(&self, key: S) -> Result<&T, String>
@@ -50,15 +58,17 @@ impl I3Frame {
                 }
             },
             None => {
-                /* Compile error: returns a value referencing data owned by the current function
-                 * 
-                 * for w in self.shadows.iter() {
-                    let x = w.upgrade().unwrap().get(&key);
-                    if x.is_ok() {
-                        return x;
-                    }
-                }*/
-                Err(format!("No key \"{}\" in frame or shadows", key))
+                match &self.parent {
+                    Some(frame) => {
+                        let x = frame.get(key.as_ref());
+                        if x.is_ok() {
+                            x
+                        } else {
+                            Err(format!("No key \"{}\" in frame or parents", key))
+                        }
+                    },
+                    None => Err(format!("No key \"{}\" in frame", key)),
+                }
             }
         }
     }
@@ -112,11 +122,11 @@ impl I3Frame {
     }
 }
 
+
 struct I3File {
     reader: Option<std::io::BufReader<std::fs::File>>,
     writer: Option<std::io::BufWriter<std::fs::File>>,
 }
-
 
 enum FileMode {
     Read,

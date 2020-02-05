@@ -12,3 +12,4 @@ bincode = "^1.2.1"
 serde = {version = "*", features = ["derive"] }
 erased-serde = "*"
 typetag = "^0.1.4"
+tokio = {version = "0.2", features = ["rt-threaded", "macros", "sync", "fs"] }
