@@ -1,29 +1,29 @@
-use crate::i3frame::I3Frame;
+use crate::frame::Frame;
 
 /// A convenience for reading and writing files of
-/// [`I3Frames`](struct.I3Frame.html).
+/// [`Frames`](struct.Frame.html).
 ///
 /// # Example
 ///
 /// ```
-/// use core::{I3Frame, I3File, FileMode};
+/// use core::{Frame, File, FileMode};
 ///
-/// // set up an I3Frame
-/// let mut frame = I3Frame::new();
+/// // set up an Frame
+/// let mut frame = Frame::new();
 /// frame.set("foo", 123u8);
 ///
 /// // get a tempfile
 /// let dir = tempfile::tempdir().unwrap();
 /// let path = dir.path().join("bar");
 /// {
-///   // open an I3File and write the frame
-///   let mut file = I3File::new(path.to_str().unwrap(), FileMode::Write);
+///   // open an File and write the frame
+///   let mut file = File::new(path.to_str().unwrap(), FileMode::Write);
 ///   file.write_frame(&frame);
 /// }
 /// assert_eq!(path.is_file(), true);
 /// {
 ///   // open the file and read the frame
-///   let mut file = I3File::new(path.to_str().unwrap(), FileMode::Read);
+///   let mut file = File::new(path.to_str().unwrap(), FileMode::Read);
 ///   match file.read_frame().unwrap() {
 ///     Some(frame2) => {
 ///       // compare to original frame
@@ -34,20 +34,20 @@ use crate::i3frame::I3Frame;
 ///   };
 /// }
 /// ```
-pub struct I3File {
+pub struct File {
     reader: Option<std::io::BufReader<std::fs::File>>,
     writer: Option<std::io::BufWriter<std::fs::File>>,
 }
 
-/// Different ways to open an [`I3File`](struct.I3File.html).
+/// Different ways to open an [`File`](struct.File.html).
 pub enum FileMode {
     Read,
     Write,
     Append,
 }
 
-impl I3File {
-    /// Create a new I3File from a filename and mode.
+impl File {
+    /// Create a new File from a filename and mode.
     ///
     /// # Arguments
     /// * `filename` - name of file to open
@@ -55,7 +55,7 @@ impl I3File {
     ///
     /// # Panics
     /// * if the file cannot be opened
-    pub fn new<S: AsRef<str>>(filename: S, mode: FileMode) -> I3File
+    pub fn new<S: AsRef<str>>(filename: S, mode: FileMode) -> File
     where
         S: std::fmt::Display
     {
@@ -67,8 +67,8 @@ impl I3File {
         };
         match file {
             Ok(f) => match mode {
-                FileMode::Read => I3File{reader: Some(std::io::BufReader::new(f)), writer: None},
-                _ => I3File{reader: None, writer: Some(std::io::BufWriter::new(f))},
+                FileMode::Read => File{reader: Some(std::io::BufReader::new(f)), writer: None},
+                _ => File{reader: None, writer: Some(std::io::BufWriter::new(f))},
             },
             Err(e) => panic!("cannot open file {}: {:?}", filename, e),
         }
@@ -81,17 +81,17 @@ impl I3File {
     /// up.
     ///
     /// # Returns
-    /// * Either an [`I3Frame`](struct.I3Frame.html) or `None`.
+    /// * Either an [`Frame`](struct.Frame.html) or `None`.
     ///
     /// # Errors
     /// * Any io errors that occur.
     ///
     /// # Panics
     /// * if we are trying to read a write-only file
-    pub fn read_frame(&mut self) -> std::io::Result<Option<I3Frame>> {
+    pub fn read_frame(&mut self) -> std::io::Result<Option<Frame>> {
         match &mut self.reader {
             Some(r) => {
-                let mut frame = I3Frame::new();
+                let mut frame = Frame::new();
                 match frame.read_from_stream(r) {
                     Ok(_) => Ok(Some(frame)),
                     Err(e) => match e.kind() {
@@ -107,14 +107,14 @@ impl I3File {
     /// Write a frame to the file.
     ///
     /// # Arguments
-    /// * `frame` - the [`I3Frame`](struct.I3Frame.html) to write
+    /// * `frame` - the [`Frame`](struct.Frame.html) to write
     ///
     /// # Errors
     /// * Any io errors that occur.
     ///
     /// # Panics
     /// * if we are trying to write a read-only file
-    pub fn write_frame(&mut self, frame: &I3Frame) -> std::io::Result<()> {
+    pub fn write_frame(&mut self, frame: &Frame) -> std::io::Result<()> {
         match &mut self.writer {
             Some(w) => frame.write_to_stream(w),
             None => panic!("trying to write to a read-only file"),
