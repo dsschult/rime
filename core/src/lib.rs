@@ -7,3 +7,7 @@ mod frame;
 pub use crate::frame::*;
 mod file;
 pub use crate::file::*;
+mod module;
+pub use crate::module::*;
+mod tray;
+pub use crate::tray::*;
