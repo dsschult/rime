@@ -9,22 +9,51 @@ use crate::module::*;
 /// Run an empty tray 10 times:
 ///
 /// ```
-/// use core::{Tray, InfiniteSource};
-/// let tray = Tray::new(InfiniteSource::new());
-/// tray.run_bounded(10);
+/// #[tokio::main]
+/// async fn main() {
+///   use core::{Tray, InfiniteSource};
+///   let tray = Tray::new(InfiniteSource::new());
+///   tray.run_bounded(10).await;
+/// }
 /// ```
 ///
-/// Run a tray 10 times, with a fake print function:
+/// Add a function to the tray:
 ///
 /// ```
 /// use core::{Tray, InfiniteSource, Frame, SimpleModule};
-/// let mut tray = Tray::new(InfiniteSource::new());
+///
 /// fn print(f: Frame) -> Frame {
 ///   println!("got frame");
 ///   f
 /// }
-/// tray.add(SimpleModule::new(print));
-/// tray.run_bounded(10);
+///
+/// #[tokio::main]
+/// async fn main() {
+///   let mut tray = Tray::new(InfiniteSource::new());
+///   tray.add_fn(print);
+///   tray.run_bounded(10).await;
+/// }
+/// ```
+///
+/// Add a module to the tray:
+///
+/// ```
+/// use core::{Tray, InfiniteSource, Frame, Module};
+///
+/// struct MyMod { }
+/// impl Module for MyMod {
+///   fn process(&self, f: Frame) -> Frame {
+///     println!("got frame");
+///     f
+///   }
+/// }
+///
+/// #[tokio::main]
+/// async fn main() {
+///   let mut tray = Tray::new(InfiniteSource::new());
+///   tray.add(MyMod{});
+///   tray.run_bounded(10).await;
+/// }
 /// ```
 pub struct Tray {
     start_module: Box<dyn StartModule>,
@@ -49,6 +78,15 @@ impl Tray {
         M: Module,
     {
         self.modules.push(Box::new(m));
+    }
+
+    /// Add a function module to the Tray.
+    ///
+    /// # Arguments
+    /// * `m` - funciton module to add
+    pub fn add_fn(&mut self, m: FunctionModule) -> ()
+    {
+        self.add(SimpleModule::new(m))
     }
 
     /// Run the tray until it ends.
